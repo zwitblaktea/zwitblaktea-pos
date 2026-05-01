@@ -1,10 +1,10 @@
 import React, { useMemo, useState } from 'react';
-import { DoorClosed, DoorOpen, Eye, EyeOff, Loader2, Lock, Power, User, X } from 'lucide-react';
+import { DoorClosed, DoorOpen, Download, Eye, EyeOff, Loader2, Lock, Power, Upload, User, X } from 'lucide-react';
 import { useApp } from '../store/AppContext';
 import { downloadStructuredPdf, pdfFormats } from '../lib/exportPdf';
 
 export default function Settings() {
-  const { storeSettings, updateStoreSettings, user, verifyCredentials, sales, refreshDailySales } = useApp();
+  const { storeSettings, updateStoreSettings, user, verifyCredentials, sales, refreshDailySales, createBackupPayload, restoreFromBackupPayload, addNotification } = useApp();
   const [isSaving, setIsSaving] = useState(false);
   const [reauthOpen, setReauthOpen] = useState(false);
   const [reauthAccountId, setReauthAccountId] = useState('');
@@ -12,6 +12,16 @@ export default function Settings() {
   const [reauthError, setReauthError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [pendingNextOpen, setPendingNextOpen] = useState(true);
+  const [isBackingUp, setIsBackingUp] = useState(false);
+  const [pendingRestorePayload, setPendingRestorePayload] = useState(null);
+  const [restoreFileName, setRestoreFileName] = useState('');
+  const [restoreFileError, setRestoreFileError] = useState('');
+  const [restoreOpen, setRestoreOpen] = useState(false);
+  const [restoreAccountId, setRestoreAccountId] = useState('');
+  const [restorePassword, setRestorePassword] = useState('');
+  const [restoreError, setRestoreError] = useState('');
+  const [restoreShowPassword, setRestoreShowPassword] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(false);
 
   const formatSaleItems = (s) => {
     return (s?.items || []).map(i => {
@@ -50,6 +60,118 @@ export default function Settings() {
     setReauthError('');
     setShowPassword(false);
     setReauthOpen(true);
+  };
+
+  const downloadJson = (obj, filename) => {
+    const text = JSON.stringify(obj, null, 2);
+    const blob = new Blob([text], { type: 'application/json;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  const doBackup = async () => {
+    if (user?.role !== 'admin') {
+      addNotification('Admin access required.', 'error');
+      return;
+    }
+    if (isBackingUp) return;
+    setIsBackingUp(true);
+    try {
+      const res = await createBackupPayload();
+      if (!res?.ok || !res?.payload) return;
+      const stamp = new Date().toISOString().replaceAll(':', '').replaceAll('-', '').slice(0, 15);
+      downloadJson(res.payload, `POS_BACKUP_${stamp}.json`);
+      addNotification('Backup downloaded.', 'success');
+    } finally {
+      setIsBackingUp(false);
+    }
+  };
+
+  const onPickRestoreFile = async (e) => {
+    const file = e?.target?.files?.[0] || null;
+    e.target.value = '';
+    if (!file) return;
+    setRestoreFileError('');
+    setPendingRestorePayload(null);
+    setRestoreFileName(file.name || '');
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+      const version = Number(parsed?.meta?.version || 0);
+      if (version !== 1 || !parsed?.tables) {
+        setRestoreFileError('Invalid backup file.');
+        return;
+      }
+      setPendingRestorePayload(parsed);
+    } catch {
+      setRestoreFileError('Invalid JSON file.');
+    }
+  };
+
+  const restoreSummary = useMemo(() => {
+    const t = pendingRestorePayload?.tables || {};
+    const count = (k) => (Array.isArray(t?.[k]) ? t[k].length : 0);
+    return {
+      accounts: count('accounts'),
+      categories: count('categories'),
+      products: count('products'),
+      product_sizes: count('product_sizes'),
+      ingredients: count('ingredients'),
+      addons: count('addons'),
+      product_ingredients: count('product_ingredients'),
+      product_size_ingredients: count('product_size_ingredients'),
+      product_addons: count('product_addons'),
+      addon_ingredients: count('addon_ingredients'),
+      sales: count('sales'),
+      transactions: count('transactions'),
+      transaction_addons: count('transaction_addons')
+    };
+  }, [pendingRestorePayload]);
+
+  const requestRestore = () => {
+    if (user?.role !== 'admin') {
+      addNotification('Admin access required.', 'error');
+      return;
+    }
+    if (!pendingRestorePayload) {
+      addNotification('Please select a backup file first.', 'warning');
+      return;
+    }
+    const account = user?.account_id || user?.email || '';
+    setRestoreAccountId(String(account || ''));
+    setRestorePassword('');
+    setRestoreError('');
+    setRestoreShowPassword(false);
+    setRestoreOpen(true);
+  };
+
+  const confirmRestore = async (e) => {
+    e?.preventDefault?.();
+    if (isRestoring) return;
+    setIsRestoring(true);
+    try {
+      const result = await verifyCredentials({ accountId: restoreAccountId, password: restorePassword });
+      if (!result?.ok) {
+        setRestoreError(result?.message || 'Invalid credentials.');
+        return;
+      }
+      const res = await restoreFromBackupPayload(pendingRestorePayload);
+      if (!res?.ok) {
+        setRestoreError(res?.reason ? String(res.reason) : 'Restore failed.');
+        return;
+      }
+      setRestoreOpen(false);
+      setPendingRestorePayload(null);
+      setRestoreFileName('');
+    } finally {
+      setIsRestoring(false);
+    }
   };
 
   const confirmToggleStore = async (e) => {
@@ -179,6 +301,64 @@ export default function Settings() {
         </div>
       </div>
 
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="p-6 border-b border-slate-200 bg-slate-50/50 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <div className="text-sm font-bold text-slate-900 uppercase tracking-wide">Backup &amp; Restore</div>
+          </div>
+          <button
+            type="button"
+            disabled={isBackingUp || user?.role !== 'admin'}
+            onClick={doBackup}
+            className="px-4 py-2 rounded-xl bg-primary-600 text-white font-bold text-xs uppercase tracking-wide hover:bg-primary-700 disabled:bg-slate-200 disabled:text-slate-500 flex items-center gap-2"
+          >
+            {isBackingUp ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
+            Backup
+          </button>
+        </div>
+
+        <div className="p-6 space-y-4">
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 font-semibold">
+            Backup file contains your database data (including account passwords). Keep it private.
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-3">
+            <label className="flex-1">
+              <input
+                type="file"
+                accept="application/json"
+                onChange={onPickRestoreFile}
+                className="hidden"
+              />
+              <div className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white font-bold text-slate-700 cursor-pointer hover:bg-slate-50 transition-all flex items-center gap-2">
+                <Upload size={16} className="text-slate-400" />
+                {restoreFileName ? restoreFileName : 'Select backup file (.json)'}
+              </div>
+            </label>
+            <button
+              type="button"
+              disabled={!pendingRestorePayload || user?.role !== 'admin'}
+              onClick={requestRestore}
+              className="px-4 py-3 rounded-xl bg-rose-600 text-white font-bold text-xs uppercase tracking-wide hover:bg-rose-700 disabled:bg-slate-200 disabled:text-slate-500"
+            >
+              Restore
+            </button>
+          </div>
+
+          {restoreFileError ? (
+            <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 font-semibold">
+              {restoreFileError}
+            </div>
+          ) : null}
+
+          {pendingRestorePayload ? (
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 font-semibold">
+              Restore preview: {restoreSummary.products} products, {restoreSummary.ingredients} ingredients, {restoreSummary.addons} add-ons, {restoreSummary.sales} sales.
+            </div>
+          ) : null}
+        </div>
+      </div>
+
       {reauthOpen ? (
         <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
           <div
@@ -271,6 +451,107 @@ export default function Settings() {
                 >
                   {isSaving ? <Loader2 size={16} className="animate-spin" /> : null}
                   {pendingNextOpen ? 'Open Store' : 'Close Store'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
+
+      {restoreOpen ? (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
+          <div
+            onClick={() => setRestoreOpen(false)}
+            className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+          />
+          <div className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+              <h3 className="text-lg font-bold text-slate-900">
+                Restore Backup Confirmation
+              </h3>
+              <button
+                type="button"
+                onClick={() => setRestoreOpen(false)}
+                className="p-2 hover:bg-slate-200 rounded-full text-slate-400 transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={confirmRestore} className="p-6 space-y-4">
+              <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900 font-semibold">
+                This will replace your current database data. Please confirm with your password.
+              </div>
+
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 font-semibold">
+                Restore preview: {restoreSummary.products} products, {restoreSummary.ingredients} ingredients, {restoreSummary.addons} add-ons, {restoreSummary.sales} sales.
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-wide ml-1">Account ID</label>
+                <div className="relative">
+                  <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
+                  <input
+                    type="text"
+                    value={restoreAccountId}
+                    onChange={(e) => setRestoreAccountId(e.target.value)}
+                    className="block w-full pl-12 pr-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-2xl text-slate-900 font-bold placeholder:text-slate-300 focus:outline-none focus:border-primary-500 focus:bg-white transition-all tracking-wide"
+                    disabled={isRestoring}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-wide ml-1">Password</label>
+                <div className="relative">
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
+                  <input
+                    type={restoreShowPassword ? 'text' : 'password'}
+                    value={restorePassword}
+                    onChange={(e) => {
+                      setRestorePassword(e.target.value);
+                      if (restoreError) setRestoreError('');
+                    }}
+                    className="block w-full pl-12 pr-12 py-3 bg-slate-50 border-2 border-slate-100 rounded-2xl text-slate-900 font-bold placeholder:text-slate-300 focus:outline-none focus:border-primary-500 focus:bg-white transition-all tracking-wide"
+                    placeholder="Enter password"
+                    disabled={isRestoring}
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setRestoreShowPassword(v => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition-colors"
+                    aria-label={restoreShowPassword ? 'Hide password' : 'Show password'}
+                    disabled={isRestoring}
+                  >
+                    {restoreShowPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+              </div>
+
+              {restoreError ? (
+                <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 font-semibold">
+                  {restoreError}
+                </div>
+              ) : null}
+
+              <div className="pt-2 flex gap-3">
+                <button
+                  type="button"
+                  disabled={isRestoring}
+                  onClick={() => setRestoreOpen(false)}
+                  className="flex-1 px-4 py-3 border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50 transition-all disabled:bg-slate-100 disabled:text-slate-400"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isRestoring}
+                  className="flex-1 px-4 py-3 text-white font-bold rounded-xl transition-all disabled:bg-slate-200 disabled:shadow-none flex items-center justify-center gap-2 bg-rose-600 hover:bg-rose-700 shadow-lg shadow-rose-200"
+                >
+                  {isRestoring ? <Loader2 size={16} className="animate-spin" /> : null}
+                  Restore
                 </button>
               </div>
             </form>
