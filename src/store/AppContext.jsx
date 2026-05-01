@@ -1479,10 +1479,9 @@ export function AppProvider({ children }) {
         price: Number(r.price || 0),
         sort_order: r.sort_order ?? 0
       }));
-      const merged = mergeById(mapped, productSizes || []);
-      setProductSizes(merged);
-      persistProductSizes(merged);
-      return merged;
+      setProductSizes(mapped);
+      persistProductSizes(mapped);
+      return mapped;
     } catch {
       return productSizes || [];
     }
@@ -1501,10 +1500,9 @@ export function AppProvider({ children }) {
         ingredient_id: r.ingredient_id,
         quantity: Number(r.quantity)
       }));
-      const merged = mergeByKey(mapped, productSizeIngredients || [], r => `${r.product_size_id}|${r.ingredient_id}`);
-      setProductSizeIngredients(merged);
-      persistProductSizeIngredients(merged);
-      return merged;
+      setProductSizeIngredients(mapped);
+      persistProductSizeIngredients(mapped);
+      return mapped;
     } catch {
       return productSizeIngredients || [];
     }
@@ -1523,10 +1521,9 @@ export function AppProvider({ children }) {
         ingredient_id: r.ingredient_id,
         quantity: Number(r.quantity)
       }));
-      const merged = mergeByKey(mapped, productIngredients || [], r => `${r.product_id}|${r.ingredient_id}`);
-      setProductIngredients(merged);
-      persistProductIngredients(merged);
-      return merged;
+      setProductIngredients(mapped);
+      persistProductIngredients(mapped);
+      return mapped;
     } catch {
       return productIngredients || [];
     }
@@ -1541,10 +1538,9 @@ export function AppProvider({ children }) {
       );
       if (error) return productAddons || [];
       const mapped = (data || []).map(r => ({ product_id: r.product_id, addon_id: r.addon_id }));
-      const merged = mergeByKey(mapped, productAddons || [], r => `${r.product_id}|${r.addon_id}`);
-      setProductAddons(merged);
-      persistProductAddons(merged);
-      return merged;
+      setProductAddons(mapped);
+      persistProductAddons(mapped);
+      return mapped;
     } catch {
       return productAddons || [];
     }
@@ -1563,10 +1559,9 @@ export function AppProvider({ children }) {
         ingredient_id: r.ingredient_id,
         quantity: Number(r.quantity)
       }));
-      const merged = mergeByKey(mapped, addonIngredients || [], r => `${r.addon_id}|${r.ingredient_id}`);
-      setAddonIngredients(merged);
-      persistAddonIngredients(merged);
-      return merged;
+      setAddonIngredients(mapped);
+      persistAddonIngredients(mapped);
+      return mapped;
     } catch {
       return addonIngredients || [];
     }
