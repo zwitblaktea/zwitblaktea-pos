@@ -3119,6 +3119,27 @@ export function AppProvider({ children }) {
     }
 
     try {
+      const { data: existingSizes, error: existingErr } = await withTimeout(
+        supabase.from('product_sizes').select('id').eq('product_id', productId),
+        5000
+      );
+      if (existingErr) throw existingErr;
+      const existingSizeIds = (existingSizes || []).map(r => r?.id).filter(v => v != null);
+
+      if (existingSizeIds.length > 0) {
+        const { error: psiErr } = await withTimeout(
+          supabase.from('product_size_ingredients').delete().in('product_size_id', existingSizeIds),
+          5000
+        );
+        if (psiErr) throw psiErr;
+        try {
+          await withTimeout(
+            supabase.from('transactions').update({ product_size_id: null }).in('product_size_id', existingSizeIds),
+            5000
+          );
+        } catch {}
+      }
+
       const { error: delErr } = await withTimeout(supabase.from('product_sizes').delete().eq('product_id', productId), 5000);
       if (delErr) throw delErr;
 
@@ -3197,7 +3218,13 @@ export function AppProvider({ children }) {
         persistProductSizeIngredients(next);
         return next;
       });
-      addNotification(`BOM saved locally (cannot save to database: ${summarizeDbError(err)}).`, 'warning');
+      const reason = summarizeDbError(err);
+      const rawMsg = String(err?.message || '').toLowerCase();
+      if (rawMsg.includes('product_size_ingredients_product_size_id_fkey')) {
+        addNotification('BOM saved locally. Your Supabase foreign keys need update (product_size_ingredients -> product_sizes). Run the latest supabase_schema.sql and reload schema.', 'warning');
+      } else {
+        addNotification(`BOM saved locally (cannot save to database: ${reason}).`, 'warning');
+      }
       await logActivity({ action: `Updated product sizes/BOM: ${productName || productId}`, area: 'product_management', entityType: 'product', entityId: productId });
       return { ok: true, localOnly: true };
     }
