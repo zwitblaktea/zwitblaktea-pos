@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { 
   Plus,
   Search, 
@@ -27,6 +27,8 @@ const Inventory = () => {
     addons,
     addonCategories,
     addonIngredients,
+    fetchIngredients,
+    fetchAddons,
     createIngredient,
     updateIngredient,
     deleteIngredient,
@@ -52,6 +54,17 @@ const Inventory = () => {
     globalSearchTerm,
     setGlobalSearchTerm
   } = useApp();
+
+  const fetchIngredientsRef = useRef(fetchIngredients);
+  const fetchAddonsRef = useRef(fetchAddons);
+
+  useEffect(() => {
+    fetchIngredientsRef.current = fetchIngredients;
+  }, [fetchIngredients]);
+
+  useEffect(() => {
+    fetchAddonsRef.current = fetchAddons;
+  }, [fetchAddons]);
 
   const ingredientOptions = useMemo(() => {
     const list = ingredients || [];
@@ -99,6 +112,18 @@ const Inventory = () => {
   useEffect(() => {
     setSearchTerm(globalSearchTerm || '');
   }, [globalSearchTerm]);
+
+  useEffect(() => {
+    fetchIngredientsRef.current?.();
+    fetchAddonsRef.current?.();
+
+    const onFocus = () => {
+      fetchIngredientsRef.current?.();
+      fetchAddonsRef.current?.();
+    };
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
+  }, []);
 
   useEffect(() => {
     if (!successOpen) return;
