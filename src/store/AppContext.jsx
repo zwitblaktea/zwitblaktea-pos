@@ -1293,7 +1293,7 @@ export function AppProvider({ children }) {
       );
       if (error) return categories || [];
       const remote = (data || []).map(r => ({ ...r, _localUpdatedAt: 0 }));
-      const merged = mergeByIdPreferLocal(remote, categories || [])
+      const merged = mergeById(remote, categories || [])
         .slice()
         .sort((a, b) => String(a?.name || '').localeCompare(String(b?.name || '')));
       setCategories(merged);
@@ -1338,7 +1338,7 @@ export function AppProvider({ children }) {
         categoryName: row.categories?.name ?? null,
         _localUpdatedAt: 0
       }));
-      const merged = mergeByIdPreferLocal(mapped, products || [])
+      const merged = mergeById(mapped, products || [])
         .slice()
         .sort((a, b) => {
           const ad = a?.created_at ? new Date(a.created_at).getTime() : 0;
@@ -1383,7 +1383,7 @@ export function AppProvider({ children }) {
         min_stock: Number(r.min_stock),
         _localUpdatedAt: 0
       }));
-      const merged = mergeByIdPreferLocal(mapped, ingredients || [])
+      const merged = mergeById(mapped, ingredients || [])
         .slice()
         .sort((a, b) => String(a?.name || '').localeCompare(String(b?.name || '')));
       setIngredients(merged);
@@ -1455,7 +1455,7 @@ export function AppProvider({ children }) {
         variable_quantity: Boolean(r.variable_quantity),
         _localUpdatedAt: 0
       }));
-      const merged = mergeByIdPreferLocal(mapped, addons || [])
+      const merged = mergeById(mapped, addons || [])
         .slice()
         .sort((a, b) => String(a?.name || '').localeCompare(String(b?.name || '')));
       setAddons(merged);
