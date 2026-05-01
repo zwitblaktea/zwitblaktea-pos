@@ -22,6 +22,7 @@ export default function Settings() {
   const [restoreError, setRestoreError] = useState('');
   const [restoreShowPassword, setRestoreShowPassword] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
+  const [backupManualOpen, setBackupManualOpen] = useState(false);
 
   const formatSaleItems = (s) => {
     return (s?.items || []).map(i => {
@@ -354,6 +355,64 @@ export default function Settings() {
           {pendingRestorePayload ? (
             <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 font-semibold">
               Restore preview: {restoreSummary.products} products, {restoreSummary.ingredients} ingredients, {restoreSummary.addons} add-ons, {restoreSummary.sales} sales.
+            </div>
+          ) : null}
+
+          <div className="pt-1">
+            <button
+              type="button"
+              onClick={() => setBackupManualOpen(v => !v)}
+              className="text-sm font-black text-primary-700 hover:text-primary-800"
+            >
+              {backupManualOpen ? 'Hide Backup & Restore Manual' : 'Show Backup & Restore Manual'}
+            </button>
+          </div>
+
+          {backupManualOpen ? (
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-4">
+              <div className="text-sm font-black text-slate-900 uppercase tracking-wide">User Manual</div>
+
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <div className="text-sm font-black text-slate-900">Backup (Download)</div>
+                <div className="mt-2 text-sm text-slate-700 font-semibold space-y-1">
+                  <div>1) Login as Admin</div>
+                  <div>2) Go to Settings → Backup &amp; Restore</div>
+                  <div>3) Click Backup</div>
+                  <div>4) Keep the downloaded .json file in a safe place (USB + cloud recommended)</div>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3">
+                <div className="text-sm font-black text-rose-900">Restore (Upload)</div>
+                <div className="mt-2 text-sm text-rose-900 font-semibold space-y-1">
+                  <div>Important: Restore replaces your current database data.</div>
+                  <div className="pt-2 text-sm text-slate-700 font-semibold space-y-1">
+                    <div>1) Login as Admin</div>
+                    <div>2) Select backup file (.json)</div>
+                    <div>3) Click Restore</div>
+                    <div>4) Enter your Admin account ID and password to confirm</div>
+                    <div>5) After success, login again</div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
+                <div className="text-sm font-black text-amber-900">Security Notes</div>
+                <div className="mt-2 text-sm text-amber-900 font-semibold space-y-1">
+                  <div>- Backup file includes sensitive data (including passwords)</div>
+                  <div>- Do not share the file publicly</div>
+                  <div>- Use encrypted storage if possible</div>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <div className="text-sm font-black text-slate-900">Troubleshooting</div>
+                <div className="mt-2 text-sm text-slate-700 font-semibold space-y-1">
+                  <div>- If restore fails, update your database using the latest supabase_schema.sql</div>
+                  <div>- Then run: NOTIFY pgrst, 'reload schema';</div>
+                  <div>- If deployed site is not updating, clear cache / service worker then hard refresh</div>
+                </div>
+              </div>
             </div>
           ) : null}
         </div>
