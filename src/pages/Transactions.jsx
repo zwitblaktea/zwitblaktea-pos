@@ -3,7 +3,6 @@ import {
   Search, 
   Download, 
   Calendar, 
-  PhilippinePeso, 
   User, 
   Filter,
   CreditCard,
@@ -269,7 +268,7 @@ const Transactions = () => {
                   <div className={`p-3 rounded-xl ${
                     selectedTrx?.id === trx.id ? 'bg-primary-100 text-primary-600' : 'bg-slate-100 text-slate-600'
                   }`}>
-                    <PhilippinePeso size={24} />
+                    <span className="font-black text-xl leading-none">₱</span>
                   </div>
                   <div>
                     <div className="flex items-center gap-2 mb-1">
@@ -397,7 +396,7 @@ const Transactions = () => {
                     onClick={() => setIsReceiptOpen(true)}
                     className="w-full py-4 bg-slate-900 text-white font-bold rounded-2xl hover:bg-slate-800 transition-all flex items-center justify-center gap-2"
                   >
-                    <PhilippinePeso size={20} />
+                    <span className="font-black text-lg leading-none">₱</span>
                     Print Receipt
                   </button>
                 </div>
@@ -405,7 +404,7 @@ const Transactions = () => {
             ) : (
               <div className="h-full flex flex-col items-center justify-center p-12 text-center bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200">
                 <div className="p-4 bg-white rounded-2xl shadow-sm text-slate-300 mb-4">
-                  <PhilippinePeso size={48} />
+                  <span className="font-black text-5xl leading-none">₱</span>
                 </div>
                 <h4 className="text-lg font-bold text-slate-900">No Transaction Selected</h4>
                 <p className="text-sm text-slate-400 mt-2">Select a transaction from the list to view its details.</p>
