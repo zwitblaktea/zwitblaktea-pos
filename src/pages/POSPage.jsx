@@ -43,7 +43,6 @@ const mockProducts = {
     name: `Classic Flavor ${i + 1}`,
     basePrice: 80,
     sizes: ['Regular', 'Large', 'Liter'],
-    hasSugarLevel: true,
     ingredients: [
       { name: 'Tea Leaves', quantity: 15 },
       { name: 'Milk', quantity: 0.2 },
@@ -56,7 +55,6 @@ const mockProducts = {
     name: `Premium Flavor ${i + 1}`,
     basePrice: 110,
     sizes: ['Regular', 'Large', 'Liter'],
-    hasSugarLevel: true,
     ingredients: [
       { name: 'Tea Leaves', quantity: 20 },
       { name: 'Milk', quantity: 0.3 },
@@ -69,7 +67,6 @@ const mockProducts = {
     name: `Coffee Flavor ${i + 1}`,
     basePrice: 95,
     sizes: ['One Size'],
-    hasSugarLevel: false,
     ingredients: [
       { name: 'Coffee Beans', quantity: 18 },
       { name: 'Milk', quantity: 0.15 },
@@ -83,7 +80,6 @@ const mockProducts = {
       name: 'Siomai Silog', 
       basePrice: 75, 
       sizes: ['Serving'], 
-      hasSugarLevel: false,
       ingredients: [{ name: 'Rice', quantity: 200 }, { name: 'Siomai', quantity: 4 }]
     },
     { 
@@ -91,7 +87,6 @@ const mockProducts = {
       name: 'Hotsilog', 
       basePrice: 75, 
       sizes: ['Serving'], 
-      hasSugarLevel: false,
       ingredients: [{ name: 'Rice', quantity: 200 }, { name: 'Hotdog', quantity: 2 }]
     },
     { 
@@ -99,7 +94,6 @@ const mockProducts = {
       name: 'Lumpia Silog', 
       basePrice: 85, 
       sizes: ['Serving'], 
-      hasSugarLevel: false,
       ingredients: [{ name: 'Rice', quantity: 200 }, { name: 'Lumpia', quantity: 3 }]
     },
   ],
@@ -109,7 +103,6 @@ const mockProducts = {
       name: 'Waffle 3pcs', 
       basePrice: 20, 
       sizes: ['Serving'], 
-      hasSugarLevel: false,
       ingredients: [{ name: 'Waffle Mix', quantity: 50 }]
     },
     { 
@@ -117,7 +110,6 @@ const mockProducts = {
       name: 'Waffle 6pcs', 
       basePrice: 35, 
       sizes: ['Serving'], 
-      hasSugarLevel: false,
       ingredients: [{ name: 'Waffle Mix', quantity: 100 }]
     },
     { 
@@ -125,7 +117,6 @@ const mockProducts = {
       name: 'Square Waffle 1pc', 
       basePrice: 20, 
       sizes: ['Serving'], 
-      hasSugarLevel: false,
       ingredients: [{ name: 'Waffle Mix', quantity: 60 }]
     },
   ]
@@ -173,7 +164,6 @@ const POSPage = () => {
 
   // Customization State
   const [customSize, setCustomSize] = useState('');
-  const [customSugar, setCustomSugar] = useState('100%');
   const [customAddons, setCustomAddons] = useState([]);
   const [addonSearchPick, setAddonSearchPick] = useState('');
 
@@ -258,7 +248,6 @@ const POSPage = () => {
     }
     setSelectedProduct(product);
     setCustomSize(product.sizeOptions?.[0]?.key || '');
-    setCustomSugar('100%');
     setCustomAddons([]);
     setAddonSearchPick('');
     setEditingCartItemId(null);
@@ -280,7 +269,6 @@ const POSPage = () => {
       return opts[0]?.key || '';
     })();
     setCustomSize(sizeKey);
-    setCustomSugar(item.displaySugar || '100%');
     const fromDisplay = (item.displayAddons || []).map(a => ({
       addon_id: a.addon_id ?? a.id ?? null,
       name: a.name,
@@ -309,7 +297,6 @@ const POSPage = () => {
       product_size_id: selectedSize.id,
       size_name: selectedSize.name,
       displaySize: selectedSize.name,
-      displaySugar: customSugar,
       displayAddons: customAddons.map(a => ({ name: a.name, price: a.unit_price, quantity: a.quantity })),
       addons: customAddons.map(a => ({ addon_id: a.addon_id, unit_price: a.unit_price, quantity: a.quantity })),
       basePrice,
@@ -620,7 +607,7 @@ const POSPage = () => {
                     </div>
                     <div className="flex items-center justify-between">
                       <div className="flex flex-col">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase">{item.displaySize} {item.displaySugar && `| ${item.displaySugar}`}</span>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase">{item.displaySize}</span>
                         {item.displayAddons.length > 0 && (
                           <span className="text-[10px] font-medium text-primary-500">
                             +{item.displayAddons.map(a => `${a.name} x${Number(a.quantity || 0)}`).join(', ')}
@@ -750,30 +737,6 @@ const POSPage = () => {
                     </div>
                   </div>
 
-                  <div className="space-y-4">
-                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wide">Sugar Level</h4>
-                    <div className="flex items-center justify-between gap-2">
-                      {['0%', '25%', '50%', '75%', '100%'].map(lvl => {
-                        const selected = customSugar === lvl;
-                        return (
-                          <button
-                            key={lvl}
-                            type="button"
-                            onClick={() => setCustomSugar(lvl)}
-                            className="flex flex-col items-center gap-2"
-                          >
-                            <span className={`h-5 w-5 rounded-full border-2 flex items-center justify-center ${selected ? 'border-primary-600' : 'border-slate-300'}`}>
-                              {selected ? <span className="h-2.5 w-2.5 rounded-full bg-primary-600" /> : null}
-                            </span>
-                            <span className={`text-xs font-bold uppercase tracking-wide ${selected ? 'text-primary-700' : 'text-slate-500'}`}>
-                              {lvl}
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-
                   {visibleAddons.length > 0 && (
                     <div className="space-y-4">
                       <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wide">
@@ -890,10 +853,6 @@ const POSPage = () => {
                 <div className="flex justify-between items-center border-b border-slate-200 pb-3">
                   <span className="font-bold text-slate-400 uppercase text-[10px]">Selected Size</span>
                   <span className="font-bold text-slate-900">{previewItem.displaySize}</span>
-                </div>
-                <div className="flex justify-between items-center border-b border-slate-200 pb-3">
-                  <span className="font-bold text-slate-400 uppercase text-[10px]">Sugar Level</span>
-                  <span className="font-bold text-slate-900">{previewItem.displaySugar || '100%'}</span>
                 </div>
                 <div className="flex justify-between items-start border-b border-slate-200 pb-3">
                   <span className="font-bold text-slate-400 uppercase text-[10px]">Add-ons</span>
