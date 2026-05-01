@@ -149,6 +149,7 @@ export function AppProvider({ children }) {
     try {
       const raw = localStorage.getItem('pos_store_settings');
       const parsed = raw ? JSON.parse(raw) : null;
+      const business_name = parsed?.business_name ? String(parsed.business_name) : (parsed?.businessName ? String(parsed.businessName) : 'ZwitBlakTea');
       const open_time = parsed?.open_time ? String(parsed.open_time) : '09:00';
       const close_time = parsed?.close_time ? String(parsed.close_time) : '21:00';
       const days_open = Array.isArray(parsed?.days_open) ? parsed.days_open.map(n => Number(n)).filter(n => Number.isFinite(n)) : [0, 1, 2, 3, 4, 5, 6];
@@ -156,9 +157,9 @@ export function AppProvider({ children }) {
       const is_open = parsed?.is_open === false ? false : true;
       const opened_at = parsed?.opened_at ? String(parsed.opened_at) : null;
       const closed_at = parsed?.closed_at ? String(parsed.closed_at) : null;
-      return { open_time, close_time, days_open, day_overrides, is_open, opened_at, closed_at };
+      return { business_name, open_time, close_time, days_open, day_overrides, is_open, opened_at, closed_at };
     } catch {
-      return { open_time: '09:00', close_time: '21:00', days_open: [0, 1, 2, 3, 4, 5, 6], day_overrides: {}, is_open: true, opened_at: null, closed_at: null };
+      return { business_name: 'ZwitBlakTea', open_time: '09:00', close_time: '21:00', days_open: [0, 1, 2, 3, 4, 5, 6], day_overrides: {}, is_open: true, opened_at: null, closed_at: null };
     }
   });
   const [productSizes, setProductSizes] = useState(() => {
@@ -888,6 +889,10 @@ export function AppProvider({ children }) {
     const next = {
       ...storeSettings,
       ...(updates || {}),
+      business_name:
+        updates?.business_name != null
+          ? String(updates.business_name || '').trim() || storeSettings.business_name || 'ZwitBlakTea'
+          : storeSettings.business_name || 'ZwitBlakTea',
       open_time: updates?.open_time ? String(updates.open_time) : storeSettings.open_time,
       close_time: updates?.close_time ? String(updates.close_time) : storeSettings.close_time,
       days_open: Array.isArray(updates?.days_open)
