@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { 
   TrendingUp, 
   TrendingDown, 
-  DollarSign, 
+  PhilippinePeso, 
   ShoppingBag, 
   Users, 
   AlertTriangle,
@@ -517,7 +517,7 @@ const Dashboard = () => {
           value={`₱${Number(isAdmin ? displayedRevenue : dailySales || 0).toLocaleString()}`} 
           change={isAdmin && revenueChange !== null ? formatPct(revenueChange) : null}
           trend={revenueChange !== null && revenueChange >= 0 ? 'up' : 'down'}
-          icon={DollarSign} 
+          icon={PhilippinePeso} 
         />
         <StatCard
           title={isAdmin ? `Total Transactions (${reportType})` : "Total Transactions"}
