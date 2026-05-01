@@ -1,20 +1,21 @@
 import React from 'react';
-import { Receipt } from 'lucide-react';
-import { openPrintReceipt } from '../lib/printReceipt';
+import { Download } from 'lucide-react';
+import { downloadReceiptPdf } from '../lib/printReceipt';
+import { useApp } from '../store/AppContext';
 
 const formatPeso = (n) =>
   `₱${Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
 
-const ReceiptPanel = ({ transaction, showPrint = true, onClose, onPrint }) => {
+const ReceiptPanel = ({ transaction, onClose }) => {
+  const { storeSettings } = useApp();
   if (!transaction) return null;
+  const businessName = String(storeSettings?.business_name || 'ZwitBlakTea');
   const paymentText = String(transaction.paymentMethod || '');
   const isCashMethod =
     paymentText.toLowerCase().includes('cash') ||
     transaction.cashReceived != null ||
     transaction.changeAmount != null;
-  const referenceNumber = transaction.referenceNumber ?? transaction.reference_number ?? null;
   
-  const paymentLabel = paymentText ? String(paymentText).toUpperCase() : '—';
   const cashReceived = transaction.cashReceived == null && isCashMethod ? Number(transaction.total || 0) : transaction.cashReceived;
   const changeAmount =
     transaction.changeAmount == null && isCashMethod
@@ -34,9 +35,8 @@ const ReceiptPanel = ({ transaction, showPrint = true, onClose, onPrint }) => {
 
       <div className="p-10 flex-1 overflow-y-auto space-y-8">
         <div className="text-center space-y-1">
-          <p className="text-xl font-bold text-slate-900 tracking-tight">
-            Zwit<span className="text-primary-600">BlakTea</span>
-          </p>
+          <p className="text-xl font-bold text-slate-900 tracking-tight">{businessName}</p>
+          {dateText ? <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wide">{dateText}</p> : null}
         </div>
 
         <div className="space-y-4">
@@ -83,16 +83,6 @@ const ReceiptPanel = ({ transaction, showPrint = true, onClose, onPrint }) => {
             <span className="text-slate-900 font-bold">{formatPeso(transaction.total)}</span>
           </div>
           <div className="flex justify-between items-center text-sm font-bold text-slate-400 uppercase">
-            <span>Payment Method</span>
-            <span className="text-slate-900 font-bold">{paymentLabel}</span>
-          </div>
-          {referenceNumber ? (
-            <div className="flex justify-between items-center text-sm font-bold text-slate-400 uppercase">
-              <span>Reference Number</span>
-              <span className="text-slate-900 font-bold">{String(referenceNumber)}</span>
-            </div>
-          ) : null}
-          <div className="flex justify-between items-center text-sm font-bold text-slate-400 uppercase">
             <span>Cash Received</span>
             <span className="text-slate-900 font-bold">{paidAmount == null ? '—' : formatPeso(paidAmount)}</span>
           </div>
@@ -100,18 +90,12 @@ const ReceiptPanel = ({ transaction, showPrint = true, onClose, onPrint }) => {
             <span>Change</span>
             <span className="text-emerald-600 font-bold">{displayChange == null ? '—' : formatPeso(displayChange)}</span>
           </div>
-          <div className="flex justify-between items-center">
-            <span className="text-sm font-bold text-slate-900 uppercase tracking-tight">
-              Total Paid ({String(transaction.paymentMethod || '').toUpperCase()})
-            </span>
-            <span className="text-2xl font-bold text-primary-600 tracking-tight">{formatPeso(transaction.total)}</span>
-          </div>
         </div>
 
         <div className="text-center space-y-2 pt-4">
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Thank you for your order!</p>
           <p className="text-[8px] text-slate-300 font-medium">
-            {transId ? `Trans ID: ${transId} | ` : ''}{dateText}
+            {transId ? `Transaction ID: ${transId}` : ''}
           </p>
         </div>
       </div>
@@ -123,14 +107,13 @@ const ReceiptPanel = ({ transaction, showPrint = true, onClose, onPrint }) => {
         >
           Done
         </button>
-        {showPrint ? (
-          <button
-            onClick={onPrint || (() => openPrintReceipt({ transaction }))}
-            className="p-5 bg-slate-100 text-slate-400 rounded-3xl hover:bg-slate-200 transition-all"
-          >
-            <Receipt size={24} />
-          </button>
-        ) : null}
+        <button
+          onClick={() => downloadReceiptPdf({ transaction, businessName })}
+          className="p-5 bg-slate-100 text-slate-400 rounded-3xl hover:bg-slate-200 transition-all"
+          aria-label="Download receipt"
+        >
+          <Download size={24} />
+        </button>
       </div>
     </div>
   );
