@@ -521,6 +521,301 @@ export function AppProvider({ children }) {
     return msg.length > 120 ? msg.slice(0, 120) + '…' : msg;
   };
 
+  const fetchAllRows = async (table, { pageSize = 1000 } = {}) => {
+    const all = [];
+    let from = 0;
+    while (true) {
+      const { data, error } = await withTimeout(
+        supabase
+          .from(table)
+          .select('*')
+          .range(from, from + pageSize - 1),
+        15000
+      );
+      if (error) throw error;
+      const rows = Array.isArray(data) ? data : [];
+      all.push(...rows);
+      if (rows.length < pageSize) break;
+      from += pageSize;
+    }
+    return all;
+  };
+
+  const chunkArray = (arr, size) => {
+    const out = [];
+    const s = Math.max(1, Math.floor(Number(size || 1)));
+    for (let i = 0; i < (arr || []).length; i += s) out.push(arr.slice(i, i + s));
+    return out;
+  };
+
+  const createBackupPayload = async () => {
+    const exported_at = new Date().toISOString();
+    const base = {
+      meta: { app: 'POS', version: 1, exported_at },
+      tables: {},
+      app_state: {
+        store_settings: storeSettings ?? null,
+        ingredient_categories: ingredientCategories ?? [],
+        material_categories: materialCategories ?? [],
+        addon_categories: addonCategories ?? []
+      }
+    };
+
+    if (!isSupabaseConfigured) {
+      return {
+        ok: true,
+        payload: {
+          ...base,
+          meta: { ...base.meta, source: 'local' },
+          tables: {
+            accounts: accounts || [],
+            categories: categories || [],
+            products: products || [],
+            product_sizes: productSizes || [],
+            ingredients: ingredients || [],
+            addons: addons || [],
+            product_ingredients: productIngredients || [],
+            product_size_ingredients: productSizeIngredients || [],
+            product_addons: productAddons || [],
+            addon_ingredients: addonIngredients || [],
+            sales: sales || [],
+            activity_logs: activityLogs || []
+          }
+        }
+      };
+    }
+
+    try {
+      const [
+        accountsRows,
+        categoriesRows,
+        productsRows,
+        productSizesRows,
+        ingredientsRows,
+        addonsRows,
+        productIngredientsRows,
+        productSizeIngredientsRows,
+        productAddonsRows,
+        addonIngredientsRows,
+        salesRows,
+        transactionsRows,
+        transactionAddonsRows,
+        inventoryLogsRows,
+        ingredientLogsRows,
+        activityLogsRows
+      ] = await Promise.all([
+        fetchAllRows('accounts'),
+        fetchAllRows('categories'),
+        fetchAllRows('products'),
+        fetchAllRows('product_sizes'),
+        fetchAllRows('ingredients'),
+        fetchAllRows('addons'),
+        fetchAllRows('product_ingredients'),
+        fetchAllRows('product_size_ingredients'),
+        fetchAllRows('product_addons'),
+        fetchAllRows('addon_ingredients'),
+        fetchAllRows('sales'),
+        fetchAllRows('transactions'),
+        fetchAllRows('transaction_addons'),
+        fetchAllRows('inventory_logs'),
+        fetchAllRows('ingredient_logs'),
+        fetchAllRows('activity_logs')
+      ]);
+
+      return {
+        ok: true,
+        payload: {
+          ...base,
+          meta: { ...base.meta, source: 'supabase' },
+          tables: {
+            accounts: accountsRows,
+            categories: categoriesRows,
+            products: productsRows,
+            product_sizes: productSizesRows,
+            ingredients: ingredientsRows,
+            addons: addonsRows,
+            product_ingredients: productIngredientsRows,
+            product_size_ingredients: productSizeIngredientsRows,
+            product_addons: productAddonsRows,
+            addon_ingredients: addonIngredientsRows,
+            sales: salesRows,
+            transactions: transactionsRows,
+            transaction_addons: transactionAddonsRows,
+            inventory_logs: inventoryLogsRows,
+            ingredient_logs: ingredientLogsRows,
+            activity_logs: activityLogsRows
+          }
+        }
+      };
+    } catch (err) {
+      const reason = summarizeDbError(err);
+      addNotification(`Backup failed (cannot read database: ${reason}).`, 'error');
+      return { ok: false, reason };
+    }
+  };
+
+  const restoreFromBackupPayload = async (payload) => {
+    const meta = payload?.meta || {};
+    const tables = payload?.tables || {};
+    const appState = payload?.app_state || {};
+    const version = Number(meta?.version || 0);
+    if (version !== 1) {
+      addNotification('Restore failed. Backup file version is not supported.', 'error');
+      return { ok: false };
+    }
+
+    const applyLocal = () => {
+      const nextAccounts = Array.isArray(tables.accounts) ? tables.accounts : [];
+      const nextCategories = Array.isArray(tables.categories) ? tables.categories : [];
+      const nextProducts = Array.isArray(tables.products) ? tables.products : [];
+      const nextProductSizes = Array.isArray(tables.product_sizes) ? tables.product_sizes : [];
+      const nextIngredients = Array.isArray(tables.ingredients) ? tables.ingredients : [];
+      const nextAddons = Array.isArray(tables.addons) ? tables.addons : [];
+      const nextProductIngredients = Array.isArray(tables.product_ingredients) ? tables.product_ingredients : [];
+      const nextProductSizeIngredients = Array.isArray(tables.product_size_ingredients) ? tables.product_size_ingredients : [];
+      const nextProductAddons = Array.isArray(tables.product_addons) ? tables.product_addons : [];
+      const nextAddonIngredients = Array.isArray(tables.addon_ingredients) ? tables.addon_ingredients : [];
+      const nextSales = Array.isArray(tables.sales) ? tables.sales : [];
+      const nextActivityLogs = Array.isArray(tables.activity_logs) ? tables.activity_logs : [];
+
+      setAccounts(nextAccounts);
+      setCategories(nextCategories);
+      setProducts(nextProducts);
+      setProductSizes(nextProductSizes);
+      setIngredients(nextIngredients);
+      setAddons(nextAddons);
+      setProductIngredients(nextProductIngredients);
+      setProductSizeIngredients(nextProductSizeIngredients);
+      setProductAddons(nextProductAddons);
+      setAddonIngredients(nextAddonIngredients);
+      setSales(nextSales);
+      setActivityLogs(nextActivityLogs);
+
+      persistCategories(nextCategories);
+      persistProducts(nextProducts);
+      persistIngredients(nextIngredients);
+      persistAddons(nextAddons);
+      persistProductSizes(nextProductSizes);
+      persistProductIngredients(nextProductIngredients);
+      persistProductSizeIngredients(nextProductSizeIngredients);
+      persistProductAddons(nextProductAddons);
+      persistAddonIngredients(nextAddonIngredients);
+      persistSales(nextSales);
+      try {
+        localStorage.setItem('activity_logs', JSON.stringify(nextActivityLogs));
+      } catch {}
+
+      const nextStore = appState?.store_settings ?? null;
+      if (nextStore) {
+        setStoreSettings(nextStore);
+        persistStoreSettings(nextStore);
+      }
+      const nextIngCats = Array.isArray(appState?.ingredient_categories) ? appState.ingredient_categories : null;
+      if (nextIngCats) {
+        setIngredientCategories(nextIngCats);
+        persistIngredientCategories(nextIngCats);
+      }
+      const nextMatCats = Array.isArray(appState?.material_categories) ? appState.material_categories : null;
+      if (nextMatCats) {
+        setMaterialCategories(nextMatCats);
+        persistMaterialCategories(nextMatCats);
+      }
+      const nextAddonCats = Array.isArray(appState?.addon_categories) ? appState.addon_categories : null;
+      if (nextAddonCats) {
+        setAddonCategories(nextAddonCats);
+        persistAddonCategories(nextAddonCats);
+      }
+
+      const recomputedMaterials = (nextIngredients || []).filter(i => isMaterialUnit(i?.unit));
+      setMaterials(recomputedMaterials);
+      persistMaterials(recomputedMaterials);
+
+      notifyLowStockIngredients(nextIngredients);
+    };
+
+    if (!isSupabaseConfigured) {
+      applyLocal();
+      addNotification('Restore completed locally.', 'success');
+      logout();
+      return { ok: true, localOnly: true };
+    }
+
+    try {
+      const deleteAll = async (table) => {
+        const { error } = await withTimeout(
+          supabase.from(table).delete().not('id', 'is', null),
+          20000
+        );
+        if (error) throw error;
+      };
+
+      const insertAll = async (table, rows) => {
+        const list = Array.isArray(rows) ? rows : [];
+        if (list.length === 0) return;
+        for (const chunk of chunkArray(list, 500)) {
+          const { error } = await withTimeout(supabase.from(table).insert(chunk), 20000);
+          if (error) throw error;
+        }
+      };
+
+      const deleteOrder = [
+        'transaction_addons',
+        'transactions',
+        'sales',
+        'inventory_logs',
+        'ingredient_logs',
+        'activity_logs',
+        'addon_ingredients',
+        'product_addons',
+        'product_size_ingredients',
+        'product_ingredients',
+        'product_sizes',
+        'products',
+        'addons',
+        'ingredients',
+        'categories',
+        'accounts'
+      ];
+
+      for (const t of deleteOrder) await deleteAll(t);
+
+      const insertOrder = [
+        'accounts',
+        'categories',
+        'products',
+        'ingredients',
+        'addons',
+        'product_sizes',
+        'product_ingredients',
+        'product_size_ingredients',
+        'product_addons',
+        'addon_ingredients',
+        'sales',
+        'transactions',
+        'transaction_addons',
+        'inventory_logs',
+        'ingredient_logs',
+        'activity_logs'
+      ];
+
+      for (const t of insertOrder) await insertAll(t, tables[t]);
+
+      try {
+        await withTimeout(supabase.rpc('reset_pos_identity_sequences'), 20000);
+      } catch {}
+
+      applyLocal();
+      addNotification('Restore completed. Please log in again.', 'success');
+      await logActivity({ action: 'Database restored from backup', area: 'settings', entityType: 'backup', entityId: String(meta?.exported_at || '') });
+      logout();
+      return { ok: true };
+    } catch (err) {
+      const reason = summarizeDbError(err);
+      addNotification(`Restore failed (cannot write database: ${reason}).`, 'error');
+      return { ok: false, reason };
+    }
+  };
+
   const LOGIN_THROTTLE_KEY = 'pos_login_throttle';
   const LOGIN_MAX_ATTEMPTS = 3;
   const LOGIN_LOCK_MS = 3 * 60 * 1000;
@@ -1088,6 +1383,9 @@ export function AppProvider({ children }) {
         .sort((a, b) => String(a?.name || '').localeCompare(String(b?.name || '')));
       setIngredients(merged);
       persistIngredients(merged);
+      const nextMaterials = merged.filter(i => isMaterialUnit(i?.unit));
+      setMaterials(nextMaterials);
+      persistMaterials(nextMaterials);
       notifyLowStockIngredients(merged);
       return merged;
     } catch {
@@ -1102,7 +1400,7 @@ export function AppProvider({ children }) {
       const { data, error } = await withTimeout(
         supabase
           .from('ingredients')
-          .select('id,name,unit,quantity,min_stock,created_at')
+          .select('id,name,category,unit,quantity,min_stock,created_at')
           .in('unit', units)
           .order('name', { ascending: true }),
         5000
@@ -2575,6 +2873,9 @@ export function AppProvider({ children }) {
       setIngredients(prev => {
         const next = (prev || []).map(x => sameId(x.id, ingredientId) ? updated : x);
         persistIngredients(next);
+        const nextMaterials = next.filter(i => isMaterialUnit(i?.unit));
+        setMaterials(nextMaterials);
+        persistMaterials(nextMaterials);
         return next;
       });
       notifyLowStockIngredients([updated]);
@@ -2601,6 +2902,9 @@ export function AppProvider({ children }) {
     setIngredients(prev => {
       const next = (prev || []).map(x => sameId(x.id, ingredientId) ? updated : x);
       persistIngredients(next);
+      const nextMaterials = next.filter(i => isMaterialUnit(i?.unit));
+      setMaterials(nextMaterials);
+      persistMaterials(nextMaterials);
       return next;
     });
     notifyLowStockIngredients([updated]);
@@ -3182,50 +3486,14 @@ export function AppProvider({ children }) {
     return { requiredIngredients, requiredMaterials, requiredProductStock };
   };
 
-  const checkCartAvailability = (cartItems) => {
-    const bomEnabled = (ingredients.length > 0 || materials.length > 0) && (productSizeIngredients.length > 0 || productIngredients.length > 0);
-    if (!bomEnabled) {
-      const missing = [];
-      const totals = new Map();
-      for (const item of cartItems || []) {
-        const productId = item.product_id ?? item.id;
-        totals.set(productId, (totals.get(productId) || 0) + Number(item.quantity || 0));
-      }
-
-      for (const [productId, requiredQty] of totals.entries()) {
-        const p = products.find(x => sameId(x.id, productId));
-        const available = p ? (p.stock == null ? Infinity : Number(p.stock || 0)) : 0;
-        if (available < requiredQty) {
-          missing.push({
-            product_id: productId,
-            name: p?.name ?? 'Unknown',
-            required: requiredQty,
-            available
-          });
-        }
-      }
-
-      return { ok: missing.length === 0, missing };
-    }
-
-    const { requiredIngredients, requiredMaterials, requiredProductStock } = buildRequiredBOMFromCart(cartItems);
+  const checkCartAvailability = (cartItems, precomputed = null) => {
+    const { requiredIngredients, requiredMaterials, requiredProductStock } = precomputed ?? buildRequiredBOMFromCart(cartItems);
+    const missing = [];
     for (const [productId, requiredQty] of requiredProductStock.entries()) {
       const p = products.find(x => sameId(x.id, productId));
       const available = p ? Number(p.stock || 0) : 0;
-      if (available < requiredQty) {
-        return {
-          ok: false,
-          missing: [{
-            product_id: productId,
-            name: p?.name ?? 'Unknown',
-            required: requiredQty,
-            available
-          }]
-        };
-      }
+      if (available < requiredQty) missing.push({ product_id: productId, name: p?.name ?? 'Unknown', required: requiredQty, available });
     }
-
-    const missing = [];
     for (const [ingredientId, required] of requiredIngredients.entries()) {
       const ing = ingredientById.get(String(ingredientId));
       const available = Number(ing?.quantity || 0);
@@ -3265,25 +3533,11 @@ export function AppProvider({ children }) {
       return { ok: false, reason: 'store_closed' };
     }
 
-    const bomMode = (ingredients.length > 0 || materials.length > 0) && (productSizeIngredients.length > 0 || productIngredients.length > 0);
-    if (bomMode) {
-      const cartCheck = checkCartAvailability(cartItems);
-      if (!cartCheck.ok) {
-        addNotification(`Insufficient stock: ${cartCheck.missing.map(m => m.name).join(', ')}`, 'error');
-        return { ok: false, missing: cartCheck.missing };
-      }
-    } else {
-      for (const line of cartItems) {
-        const p = products.find(x => sameId(x.id, line.product_id));
-        if (!p) {
-          addNotification(`Out of stock: ${line.name}`, 'error');
-          return { ok: false };
-        }
-        if (p.stock != null && Number(p.stock) < Number(line.quantity)) {
-          addNotification(`Out of stock: ${line.name}`, 'error');
-          return { ok: false };
-        }
-      }
+    const requiredBOM = buildRequiredBOMFromCart(cartItems);
+    const cartCheck = checkCartAvailability(cartItems, requiredBOM);
+    if (!cartCheck.ok) {
+      addNotification(`Insufficient stock: ${cartCheck.missing.map(m => m.name).join(', ')}`, 'error');
+      return { ok: false, missing: cartCheck.missing };
     }
 
     let totalAmount = 0;
@@ -3336,21 +3590,14 @@ export function AppProvider({ children }) {
         return next;
       });
 
-      if (bomMode) {
-        const { requiredIngredients, requiredMaterials, requiredProductStock } = buildRequiredBOMFromCart(cartItems);
-        for (const [ingredientId, required] of requiredIngredients.entries()) {
+      for (const [ingredientId, required] of requiredBOM.requiredIngredients.entries()) {
           await adjustIngredientStock({ ingredientId, change: -Number(required), reason: 'sale' });
-        }
-        for (const [materialId, required] of requiredMaterials.entries()) {
+      }
+      for (const [materialId, required] of requiredBOM.requiredMaterials.entries()) {
           await adjustMaterialStock({ materialId, change: -Number(required), reason: 'sale' });
-        }
-        for (const [productId, required] of requiredProductStock.entries()) {
+      }
+      for (const [productId, required] of requiredBOM.requiredProductStock.entries()) {
           await adjustProductStock({ productId, change: -Number(required), reason: 'sale' });
-        }
-      } else {
-        for (const line of cartItems) {
-          await adjustProductStock({ productId: line.product_id, change: -Number(line.quantity), reason: 'sale' });
-        }
       }
 
       setDailySales(prev => Number(prev || 0) + totalAmount);
@@ -3394,16 +3641,6 @@ export function AppProvider({ children }) {
     }
 
     const saleId = saleData[0].id;
-
-    let requiredIngredients = new Map();
-    let requiredMaterials = new Map();
-    let requiredProductStock = new Map();
-    if (bomMode) {
-      const required = buildRequiredBOMFromCart(cartItems);
-      requiredIngredients = required.requiredIngredients;
-      requiredMaterials = required.requiredMaterials;
-      requiredProductStock = required.requiredProductStock;
-    }
 
     for (const item of cartItems) {
       const qty = Number(item.quantity || 0);
@@ -3466,34 +3703,21 @@ export function AppProvider({ children }) {
       }
     }
 
-    if (bomMode) {
-      for (const [ingredientId, required] of requiredIngredients.entries()) {
-        const ok = await adjustIngredientStock({ ingredientId, change: -Number(required), reason: 'sale' });
-        if (!ok.ok) {
-            return await commitLocalSale({ warn: true, warnError: new Error('Failed to adjust ingredient stock') });
-        }
-      }
-      for (const [materialId, required] of requiredMaterials.entries()) {
-        const ok = await adjustMaterialStock({ materialId, change: -Number(required), reason: 'sale' });
-        if (!ok.ok) {
-          return await commitLocalSale({ warn: true, warnError: new Error('Failed to adjust material stock') });
-        }
-      }
-      for (const [productId, required] of requiredProductStock.entries()) {
-        const ok = await adjustProductStock({ productId, change: -Number(required), reason: 'sale' });
-        if (!ok.ok) {
-          return await commitLocalSale({ warn: true, warnError: new Error('Failed to adjust product stock') });
-        }
-      }
+    for (const [ingredientId, required] of requiredBOM.requiredIngredients.entries()) {
+      const ok = await adjustIngredientStock({ ingredientId, change: -Number(required), reason: 'sale' });
+      if (!ok.ok) return await commitLocalSale({ warn: true, warnError: new Error('Failed to adjust ingredient stock') });
+    }
+    for (const [materialId, required] of requiredBOM.requiredMaterials.entries()) {
+      const ok = await adjustMaterialStock({ materialId, change: -Number(required), reason: 'sale' });
+      if (!ok.ok) return await commitLocalSale({ warn: true, warnError: new Error('Failed to adjust material stock') });
+    }
+    for (const [productId, required] of requiredBOM.requiredProductStock.entries()) {
+      const ok = await adjustProductStock({ productId, change: -Number(required), reason: 'sale' });
+      if (!ok.ok) return await commitLocalSale({ warn: true, warnError: new Error('Failed to adjust product stock') });
+    }
+    if (requiredBOM.requiredIngredients.size > 0 || requiredBOM.requiredMaterials.size > 0) {
       await fetchIngredients();
       await fetchMaterials();
-    } else {
-      for (const line of cartItems) {
-        const ok = await adjustProductStock({ productId: line.product_id, change: -Number(line.quantity), reason: 'sale' });
-        if (!ok.ok) {
-            return await commitLocalSale({ warn: true, warnError: new Error('Failed to adjust product stock') });
-        }
-      }
     }
 
     await refreshDailySales();
@@ -3560,6 +3784,8 @@ export function AppProvider({ children }) {
     storeSettings,
     fetchStoreSettings,
     updateStoreSettings,
+    createBackupPayload,
+    restoreFromBackupPayload,
     ingredients,
     ingredientCategories,
     addIngredientCategory,
