@@ -43,6 +43,23 @@ const ProductManagement = () => {
   const [categoryName, setCategoryName] = useState('');
   const [isCreatingCategory, setIsCreatingCategory] = useState(false);
 
+  const productsWithBom = useMemo(() => {
+    const set = new Set();
+    for (const r of productIngredients || []) {
+      if (r?.product_id != null) set.add(String(r.product_id));
+    }
+    const sizeToProductId = new Map();
+    for (const s of productSizes || []) {
+      if (s?.id == null || s?.product_id == null) continue;
+      sizeToProductId.set(String(s.id), String(s.product_id));
+    }
+    for (const r of productSizeIngredients || []) {
+      const pid = sizeToProductId.get(String(r?.product_size_id));
+      if (pid) set.add(String(pid));
+    }
+    return set;
+  }, [productIngredients, productSizes, productSizeIngredients]);
+
   // Form state for a new product
   const initialProductState = {
     name: '',
@@ -299,7 +316,7 @@ const ProductManagement = () => {
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
                         <span className="font-semibold text-slate-900">{product.name}</span>
-                        {product?.stock != null && Number(product.stock || 0) <= 0 ? (
+                        {product?.stock != null && Number(product.stock || 0) <= 0 && !productsWithBom.has(String(product.id)) ? (
                           <span className="inline-flex w-fit rounded-lg bg-slate-200 px-2 py-1 text-[10px] font-bold uppercase tracking-tight text-slate-600">
                             No Stock
                           </span>
