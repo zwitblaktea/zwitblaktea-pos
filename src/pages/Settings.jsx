@@ -405,14 +405,16 @@ export default function Settings() {
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                <div className="text-sm font-black text-slate-900">Troubleshooting</div>
-                <div className="mt-2 text-sm text-slate-700 font-semibold space-y-1">
-                  <div>- If restore fails, update your database using the latest supabase_schema.sql</div>
-                  <div>- Then run: NOTIFY pgrst, 'reload schema';</div>
-                  <div>- If deployed site is not updating, clear cache / service worker then hard refresh</div>
-                </div>
-              </div>
+              {/*
+<div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+  <div className="text-sm font-black text-slate-900">Troubleshooting</div>
+  <div className="mt-2 text-sm text-slate-700 font-semibold space-y-1">
+    <div>- If restore fails, update your database using the latest supabase_schema.sql</div>
+    <div>- Then run: NOTIFY pgrst, 'reload schema';</div>
+    <div>- If deployed site is not updating, clear cache / service worker then hard refresh</div>
+  </div>
+</div>
+*/}
             </div>
           ) : null}
         </div>
