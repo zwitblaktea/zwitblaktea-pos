@@ -3,6 +3,13 @@ import { DoorClosed, DoorOpen, Download, Eye, EyeOff, Loader2, Lock, Power, Uplo
 import { useApp } from '../store/AppContext';
 import { downloadStructuredPdf, pdfFormats } from '../lib/exportPdf';
 
+import backup1 from './backup1.jpg';
+import backup2 from './backup2.jpg';
+import backup3 from './backup3.jpg';
+import restore2 from './restore2.jpg';
+import click_restore from './click_restore.jpg';
+import restore4 from './restore4.jpg';
+
 export default function Settings() {
   const { storeSettings, updateStoreSettings, user, verifyCredentials, sales, refreshDailySales, createBackupPayload, restoreFromBackupPayload, addNotification } = useApp();
   const [isSaving, setIsSaving] = useState(false);
@@ -23,6 +30,7 @@ export default function Settings() {
   const [restoreShowPassword, setRestoreShowPassword] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
   const [backupManualOpen, setBackupManualOpen] = useState(false);
+  const [previewImage, setPreviewImage] = useState(null);
 
   const formatSaleItems = (s) => {
     return (s?.items || []).map(i => {
@@ -374,11 +382,46 @@ export default function Settings() {
 
               <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
                 <div className="text-sm font-black text-slate-900">Backup (Download)</div>
-                <div className="mt-2 text-sm text-slate-700 font-semibold space-y-1">
-                  <div>1) Login as Admin</div>
-                  <div>2) Go to Settings → Backup &amp; Restore</div>
-                  <div>3) Click Backup</div>
-                  <div>4) Keep the downloaded .json file in a safe place (USB + cloud recommended)</div>
+                <div className="mt-2 text-sm text-slate-700 font-semibold space-y-4">
+                  <div className="space-y-2">
+                    <div>1) Login as Admin</div>
+                    <div className="flex justify-center">
+                      <img 
+                        src={backup1} 
+                        alt="Backup Step 1" 
+                        onClick={() => setPreviewImage({ src: backup1, alt: "Backup Step 1" })}
+                        className="w-full max-w-[300px] h-auto rounded-xl border border-slate-200 shadow-sm cursor-zoom-in transition-transform hover:scale-[1.02] hover:shadow-md active:scale-95"
+                        onError={(e) => e.target.style.display = 'none'}
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <div>2) Go to Settings → Backup &amp; Restore</div>
+                    <div className="flex justify-center">
+                      <img 
+                        src={backup2} 
+                        alt="Backup Step 2" 
+                        onClick={() => setPreviewImage({ src: backup2, alt: "Backup Step 2" })}
+                        className="w-full max-w-[300px] h-auto rounded-xl border border-slate-200 shadow-sm cursor-zoom-in transition-transform hover:scale-[1.02] hover:shadow-md active:scale-95"
+                        onError={(e) => e.target.style.display = 'none'}
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <div>3) Click Backup</div>
+                    <div className="flex justify-center">
+                      <img 
+                        src={backup3} 
+                        alt="Backup Step 3" 
+                        onClick={() => setPreviewImage({ src: backup3, alt: "Backup Step 3" })}
+                        className="w-full max-w-[300px] h-auto rounded-xl border border-slate-200 shadow-sm cursor-zoom-in transition-transform hover:scale-[1.02] hover:shadow-md active:scale-95"
+                        onError={(e) => e.target.style.display = 'none'}
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <div>4) Keep the downloaded .json file in a safe place (USB + cloud recommended)</div>
+                  </div>
                 </div>
               </div>
 
@@ -386,12 +429,58 @@ export default function Settings() {
                 <div className="text-sm font-black text-rose-900">Restore (Upload)</div>
                 <div className="mt-2 text-sm text-rose-900 font-semibold space-y-1">
                   <div>Important: Restore replaces your current database data.</div>
-                  <div className="pt-2 text-sm text-slate-700 font-semibold space-y-1">
-                    <div>1) Login as Admin</div>
-                    <div>2) Select backup file (.json)</div>
-                    <div>3) Click Restore</div>
-                    <div>4) Enter your Admin account ID and password to confirm</div>
-                    <div>5) After success, login again</div>
+                  <div className="pt-2 text-sm text-slate-700 font-semibold space-y-4">
+                    <div className="space-y-2">
+                      <div>1) Login as Admin</div>
+                      <div className="flex justify-center">
+                        <img 
+                          src={backup1} 
+                          alt="Restore Step 1" 
+                          onClick={() => setPreviewImage({ src: backup1, alt: "Restore Step 1" })}
+                          className="w-full max-w-[300px] h-auto rounded-xl border border-slate-200 shadow-sm cursor-zoom-in transition-transform hover:scale-[1.02] hover:shadow-md active:scale-95"
+                          onError={(e) => e.target.style.display = 'none'}
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <div>2) Select backup file (.json)</div>
+                      <div className="flex justify-center">
+                        <img 
+                          src={restore2} 
+                          alt="Restore Step 2" 
+                          onClick={() => setPreviewImage({ src: restore2, alt: "Restore Step 2" })}
+                          className="w-full max-w-[300px] h-auto rounded-xl border border-slate-200 shadow-sm cursor-zoom-in transition-transform hover:scale-[1.02] hover:shadow-md active:scale-95"
+                          onError={(e) => e.target.style.display = 'none'}
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <div>3) Click Restore</div>
+                      <div className="flex justify-center">
+                        <img 
+                          src={click_restore} 
+                          alt="Restore Step 3" 
+                          onClick={() => setPreviewImage({ src: click_restore, alt: "Restore Step 3" })}
+                          className="w-full max-w-[300px] h-auto rounded-xl border border-slate-200 shadow-sm cursor-zoom-in transition-transform hover:scale-[1.02] hover:shadow-md active:scale-95"
+                          onError={(e) => e.target.style.display = 'none'}
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <div>4) Enter your Admin account ID and password to confirm</div>
+                      <div className="flex justify-center">
+                        <img 
+                          src={restore4} 
+                          alt="Restore Step 4" 
+                          onClick={() => setPreviewImage({ src: restore4, alt: "Restore Step 4" })}
+                          className="w-full max-w-[300px] h-auto rounded-xl border border-slate-200 shadow-sm cursor-zoom-in transition-transform hover:scale-[1.02] hover:shadow-md active:scale-95"
+                          onError={(e) => e.target.style.display = 'none'}
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <div>5) After success, login again</div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -518,6 +607,33 @@ export default function Settings() {
           </div>
         </div>
       ) : null}
+
+      {previewImage && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div
+            onClick={() => setPreviewImage(null)}
+            className="absolute inset-0 bg-slate-900/90 backdrop-blur-md"
+          />
+          <div className="relative w-full max-w-4xl max-h-[90vh] flex flex-col items-center">
+            <button
+              onClick={() => setPreviewImage(null)}
+              className="absolute -top-12 right-0 p-2 text-white hover:bg-white/10 rounded-full transition-colors"
+            >
+              <X size={24} />
+            </button>
+            <img 
+              src={previewImage.src} 
+              alt={previewImage.alt}
+              className="w-full h-auto max-h-[80vh] object-contain rounded-2xl shadow-2xl border border-white/10"
+            />
+            {previewImage.alt && (
+              <div className="mt-4 px-6 py-2 bg-white/10 backdrop-blur-md border border-white/10 rounded-full text-white text-sm font-bold">
+                {previewImage.alt}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {restoreOpen ? (
         <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
